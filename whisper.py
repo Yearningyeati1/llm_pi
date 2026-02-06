@@ -71,7 +71,7 @@ def run_whisper():
 
     proc = subprocess.Popen(
         WHISPER_CMD,
-        cwd="whisper.cpp",
+        cwd = "../whisper.cpp",
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
         text=True,
