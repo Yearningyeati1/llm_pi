@@ -229,6 +229,7 @@ def text_aggregator():
 
             # Commit prompt
             last_prompt_sent = clean
+            metrics["speech_end"] = time.monotonic()
             print("\n\n? Sending to LLM...")
             metrics["llm_request_start"] = time.monotonic()
 
