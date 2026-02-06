@@ -50,6 +50,21 @@ last_llm_time = 0
 
 ANSI_ESCAPE = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 
+def speak(text):
+    """
+    Blocking TTS using espeak-ng
+    """
+    try:
+        subprocess.run(
+            ["espeak-ng", "-s", "165", "-v", "en-us", text],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True
+        )
+    except Exception as e:
+        print(f"[TTS ERROR] {e}")
+
+
 
 def run_whisper():
     global listening_enabled
