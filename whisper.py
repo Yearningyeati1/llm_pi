@@ -104,7 +104,7 @@ def run_llama_stream(prompt):
     llm_busy = True
 
     prompt = prompt[-MAX_PROMPT_CHARS:]
-    print("\n? LLM:", end=" ", flush=True)
+    spoken_text = ""
 
     try:
         with requests.post(
@@ -153,7 +153,9 @@ def run_llama_stream(prompt):
                     if metrics["llm_first_token"] is None:
                         metrics["llm_first_token"] = time.monotonic()
                     metrics["tokens"] += 1
+                    spoken_text += delta
                     print(delta, end="", flush=True)
+
 
         print("\n")
 
@@ -161,6 +163,9 @@ def run_llama_stream(prompt):
         print(f"\n[LLAMA ERROR] {e}\n")
 
     finally:
+        # Speak response (TTS)
+        if spoken_text.strip():
+            speak(spoken_text.strip())
         llm_busy = False
         listening_enabled = True
         metrics["llm_end"] = time.monotonic()
