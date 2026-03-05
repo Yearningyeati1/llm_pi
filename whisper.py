@@ -97,15 +97,14 @@ def run_whisper():
     proc.terminate()
 
 
-def run_llama_stream(prompt):
+def run_llama_stream(prompt,speech_end_time):
     global listening_enabled, llm_busy
     # ------ Metrics bug 05/03/2026 ---------------
-    speech_end_snapshot = metrics["speech_end"]  # snapshot before reset
-    metrics["llm_request_start"] = None
+    metrics["speech_end"] = speech_end_time
+    metrics["llm_request_start"] = time.monotonic()
     metrics["llm_first_token"] = None
     metrics["llm_end"] = None
     metrics["tokens"] = 0
-    metrics["speech_end"] = speech_end_snapshot 
     # --------------------------------------------------
     listening_enabled = False
     llm_busy = True
@@ -235,13 +234,20 @@ def text_aggregator():
                 continue
 
             # Commit prompt
-            last_prompt_sent = clean
-            metrics["speech_end"] = time.monotonic()
-            print("\n\n? Sending to LLM...")
-            metrics["llm_request_start"] = time.monotonic()
+            # last_prompt_sent = clean
+            # metrics["speech_end"] = time.monotonic()
+            # print("\n\n? Sending to LLM...")
+            # metrics["llm_request_start"] = time.monotonic()
 
-            run_llama_stream(clean)
-            print("\n---\n")
+            # ------ 05/03/2026 metrics have messed stuff up
+            speech_end = time.monotonic()         # capture locally
+            print("\n\n? Sending to LLM...")
+            run_llama_stream(clean, speech_end)   # pass it in
+
+            # -------
+
+            # run_llama_stream(clean)
+            # print("\n---\n")
 
             # HARD RESET after LLM turn
             buffer = ""
@@ -252,26 +258,43 @@ def text_aggregator():
     
 
 
+# def print_metrics():
+#     if not all([
+#         metrics["speech_end"],
+#         metrics["llm_request_start"],
+#         metrics["llm_first_token"],
+#         metrics["llm_end"]
+#     ]):
+#         return
+
+#     asr_to_llm = metrics["llm_request_start"] - metrics["speech_end"]
+#     ttft = metrics["llm_first_token"] - metrics["llm_request_start"]
+#     llm_duration = metrics["llm_end"] - metrics["llm_first_token"]
+#     tps = metrics["tokens"] / llm_duration if llm_duration > 0 else 0
+#     end_to_end = metrics["llm_first_token"] - metrics["speech_end"]
+
+#     print("\nTiming Metrics")
+#     print(f"ASR → LLM decision latency : {asr_to_llm:.3f}s")
+#     print(f"LLM Time-to-First-Token   : {ttft:.3f}s")
+#     print(f"LLM Tokens/sec            : {tps:.2f}")
+#     print(f"End-to-End Latency        : {end_to_end:.3f}s")
+
+# --------- Update print func
 def print_metrics():
-    if not all([
-        metrics["speech_end"],
-        metrics["llm_request_start"],
-        metrics["llm_first_token"],
-        metrics["llm_end"]
-    ]):
-        return
+    try:
+        asr_to_llm = metrics["llm_request_start"] - metrics["speech_end"]
+        ttft = metrics["llm_first_token"] - metrics["llm_request_start"]
+        llm_duration = metrics["llm_end"] - metrics["llm_first_token"]
+        tps = metrics["tokens"] / llm_duration if llm_duration > 0 else 0
+        end_to_end = metrics["llm_first_token"] - metrics["speech_end"]
 
-    asr_to_llm = metrics["llm_request_start"] - metrics["speech_end"]
-    ttft = metrics["llm_first_token"] - metrics["llm_request_start"]
-    llm_duration = metrics["llm_end"] - metrics["llm_first_token"]
-    tps = metrics["tokens"] / llm_duration if llm_duration > 0 else 0
-    end_to_end = metrics["llm_first_token"] - metrics["speech_end"]
-
-    print("\nTiming Metrics")
-    print(f"ASR → LLM decision latency : {asr_to_llm:.3f}s")
-    print(f"LLM Time-to-First-Token   : {ttft:.3f}s")
-    print(f"LLM Tokens/sec            : {tps:.2f}")
-    print(f"End-to-End Latency        : {end_to_end:.3f}s")
+        print("\nTiming Metrics")
+        print(f"ASR → LLM decision latency : {asr_to_llm:.3f}s")
+        print(f"LLM Time-to-First-Token    : {ttft:.3f}s")
+        print(f"LLM Tokens/sec             : {tps:.2f}")
+        print(f"End-to-End Latency         : {end_to_end:.3f}s")
+    except TypeError as e:
+        print(f"[METRICS ERROR] Missing value: {e}")
 
 
 def main():
