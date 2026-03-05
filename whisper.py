@@ -99,7 +99,14 @@ def run_whisper():
 
 def run_llama_stream(prompt):
     global listening_enabled, llm_busy
-
+    # ------ Metrics bug 05/03/2026 ---------------
+    speech_end_snapshot = metrics["speech_end"]  # snapshot before reset
+    metrics["llm_request_start"] = None
+    metrics["llm_first_token"] = None
+    metrics["llm_end"] = None
+    metrics["tokens"] = 0
+    metrics["speech_end"] = speech_end_snapshot 
+    # --------------------------------------------------
     listening_enabled = False
     llm_busy = True
 
