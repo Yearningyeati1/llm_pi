@@ -65,10 +65,31 @@ def speak(text):
     except Exception as e:
         print(f"[TTS ERROR] {e}")
 
-
+# -------- LLM Warmup exercise --------------- 06/03.2026
+def warmup_llm():
+    try:
+        requests.post(
+            LLAMA_URL,
+            json={
+                "messages": [
+                    {"role": "system", "content": "You are a voice assistant. Reply in exactly 1 short sentence."},
+                    {"role": "user", "content": "hi"}
+                ],
+                "n_predict": 1,
+                "stream": False,
+                "cache_prompt": True
+            },
+            timeout=10
+        )
+        print("[WARMUP] LLM ready")
+    except Exception as e:
+        print(f"[WARMUP ERROR] {e}")
+# --------  ---------------
 
 def run_whisper():
     global listening_enabled
+
+    print("Listening: ")
 
     proc = subprocess.Popen(
         WHISPER_CMD,
@@ -300,6 +321,7 @@ def print_metrics():
 
 
 def main():
+    warmup_llm()
     whisper_thread = threading.Thread(target=run_whisper, daemon=True)
     agg_thread = threading.Thread(target=text_aggregator, daemon=True)
 
