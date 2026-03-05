@@ -33,7 +33,7 @@ LLAMA_URL = "http://localhost:8080/v1/chat/completions"
 SILENCE_TIMEOUT = 1.2        # seconds
 MIN_CHARS = 25
 MAX_PROMPT_CHARS = 512
-N_PREDICT = 128
+N_PREDICT = 40
 
 last_prompt_sent = ""
 
@@ -198,6 +198,7 @@ def run_llama_stream(prompt,speech_end_time):
             metrics["tts_end"] = time.monotonic()
         llm_busy = False
         listening_enabled = True
+        print("Listening: ")
         metrics["llm_end"] = time.monotonic()
         print_metrics()
         global last_llm_time
