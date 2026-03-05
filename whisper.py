@@ -140,14 +140,14 @@ def run_llama_stream(prompt,speech_end_time):
             json={
                 "messages": [
                     {
-                        "role": "system",
-                        "content": (
-                            "You are a voice assistant running on a Raspberry Pi.\n\n"
-                            "Rules:\n"
-                            "- Respond in 1 short sentence ONLY.\n"
-                            "- Do NOT mention model names, training data, or developers.\n"
-                            "- If the answer would be long, summarize aggressively.\n"
-                        )
+                        "role": "system", "content": "You are a voice assistant. Reply in exactly 1 short sentence."
+                        # "content": (
+                        #     "You are a voice assistant running on a Raspberry Pi.\n\n"
+                        #     "Rules:\n"
+                        #     "- Respond in 1 short sentence ONLY.\n"
+                        #     "- Do NOT mention model names, training data, or developers.\n"
+                        #     "- If the answer would be long, summarize aggressively.\n"
+                        # )
                     },
                     {
                         "role": "user",
@@ -156,6 +156,7 @@ def run_llama_stream(prompt,speech_end_time):
                 ],
                 "n_predict": N_PREDICT,
                 "temperature": 0.5,
+                "cache_prompt": True,
                 "stream": True
             },
             stream=True,
