@@ -9,7 +9,7 @@ import re
 # ================= Add Piper TTS ============= 06/03/2026
 PIPER_MODEL = "./models/en_US-lessac-low.onnx"
 PIPER_BIN   = "./piper/piper"
-
+CHUNK_PATTERN = re.compile(r'([^.!?,]+[.!?,]+)')
 tts_queue = queue.Queue()
 
 def piper_speak(text):
