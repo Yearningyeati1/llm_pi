@@ -24,8 +24,7 @@ def piper_speak(text):
             ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
+            stderr=subprocess.PIPE
         )
         # pipe text in, get raw PCM out → play with aplay
         aplay = subprocess.Popen(
