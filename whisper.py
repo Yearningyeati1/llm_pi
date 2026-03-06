@@ -10,13 +10,13 @@ import re
 # ================= CONFIG =================
 
 WHISPER_CMD = [
-    "taskset", "-c", "3",
+    "taskset", "-c", "2,3",
     "./build/bin/whisper-stream",
     "-m", "./models/ggml-tiny.en.bin",
     "--step", "3000", # 4000
     "--length", "6000", # 8000
     "-c", "0",
-    "-t", "1", # 4
+    "-t", "2", # 4
     "-ac", "512", # 512
 ]
 
