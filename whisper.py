@@ -51,7 +51,7 @@ def tts_worker():
 # ================= CONFIG =================
 
 WHISPER_CMD = [
-    "taskset", "-c", "2,3",
+    "taskset", "-c", "0,1",
     "./build/bin/whisper-stream",
     "-m", "./models/ggml-tiny.en.bin",
     "--step", "3000", # 4000
