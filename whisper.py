@@ -14,6 +14,7 @@ tts_queue = queue.Queue()
 
 def piper_speak(text):
     """Speak a single chunk via piper."""
+    print(f"[TTS] Speaking: '{text[:50]}'")  
     try:
         proc = subprocess.Popen(
             [
@@ -23,6 +24,7 @@ def piper_speak(text):
             ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
         )
         # pipe text in, get raw PCM out → play with aplay
@@ -31,10 +33,15 @@ def piper_speak(text):
             stdin=proc.stdout,
             stderr=subprocess.DEVNULL,
         )
-        proc.stdin.write(text.encode())
-        proc.stdin.close()
-        proc.wait()
+        
+        proc.stdout.close()
+
+        _, stderr = proc.communicate(input=text.encode())
+        if stderr:
+            print(f"[PIPER STDERR] {stderr.decode()}")
+
         aplay.wait()
+        
     except Exception as e:
         print(f"[TTS ERROR] {e}")
 
@@ -179,6 +186,7 @@ def run_llama_stream(prompt,speech_end_time):
     metrics["llm_first_token"] = None
     metrics["llm_end"] = None
     metrics["tokens"] = 0
+    metrics["tts_end"] = None
     # --------------------------------------------------
     listening_enabled = False
     llm_busy = True
