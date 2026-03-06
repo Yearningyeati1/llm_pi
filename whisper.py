@@ -113,7 +113,7 @@ session = requests.Session()
 # == System Prompt ++ 06/03
 SYSTEM_MESSAGE = {
     "role": "system",
-    "content": "You are a voice assistant named SPARC developed at NIT Rourkela. Reply briefly."
+    "content": "You are a voice assistant named CARAT developed at NIT Rourkela. Reply briefly."
 }
 #===========================
 # -------- LLM Warmup exercise --------------- 06/03.2026
