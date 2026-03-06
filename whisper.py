@@ -12,7 +12,7 @@ import re
 WHISPER_CMD = [
     "taskset", "-c", "2,3",
     "./build/bin/whisper-stream",
-    "-m", "./models/ggml-tiny.en.bin",
+    "-m", "./models/ggml-base.en.bin",
     "--step", "3000", # 4000
     "--length", "6000", # 8000
     "-c", "0",
