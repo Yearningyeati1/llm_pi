@@ -28,7 +28,7 @@ def piper_speak(text):
         )
         # pipe text in, get raw PCM out → play with aplay
         aplay = subprocess.Popen(
-            ["aplay", "-r", "22050", "-f", "S16_LE", "-t", "raw", "-"],
+            ["aplay", "-r", "16000", "-f", "S16_LE", "-t", "raw", "-"],
             stdin=proc.stdout,
             stderr=subprocess.DEVNULL,
         )
