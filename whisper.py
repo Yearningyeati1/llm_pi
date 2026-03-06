@@ -65,14 +65,24 @@ def speak(text):
     except Exception as e:
         print(f"[TTS ERROR] {e}")
 
+# Add global TCP session 06/03/2026
+
+session = requests.Session()
+# == System Prompt ++ 06/03
+SYSTEM_MESSAGE = {
+    "role": "system",
+    "content": "You are a voice assistant. Reply briefly in one sentence."
+}
+#===========================
 # -------- LLM Warmup exercise --------------- 06/03.2026
+
 def warmup_llm():
     try:
-        requests.post(
+        session.post(
             LLAMA_URL,
             json={
                 "messages": [
-                    {"role": "system", "content": "You are a voice assistant named SPARC developed at NIT Rourkela. Reply in one short sentence."},
+                    SYSTEM_MESSAGE,
                     {"role": "user", "content": "hi"}
                 ],
                 "n_predict": 1,
@@ -135,20 +145,11 @@ def run_llama_stream(prompt,speech_end_time):
     spoken_text = ""
 
     try:
-        with requests.post(
+        with session.post(
             LLAMA_URL,
             json={
                 "messages": [
-                    {
-                        "role": "system", "content": "You are a voice assistant named SPARC developed at NIT Rourkela. Reply in one short sentence."
-                        # "content": (
-                        #     "You are a voice assistant running on a Raspberry Pi.\n\n"
-                        #     "Rules:\n"
-                        #     "- Respond in 1 short sentence ONLY.\n"
-                        #     "- Do NOT mention model names, training data, or developers.\n"
-                        #     "- If the answer would be long, summarize aggressively.\n"
-                        # )
-                    },
+                    SYSTEM_MESSAGE,
                     {
                         "role": "user",
                         "content": prompt
