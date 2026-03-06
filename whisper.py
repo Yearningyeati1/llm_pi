@@ -12,11 +12,11 @@ import re
 WHISPER_CMD = [
     "./build/bin/whisper-stream",
     "-m", "./models/ggml-tiny.en.bin",
-    "--step", "2000", # 4000
+    "--step", "3000", # 4000
     "--length", "6000", # 8000
     "-c", "0",
     "-t", "3", # 4
-    "-ac", "256", # 512
+    "-ac", "512", # 512
 ]
 
 metrics = {
