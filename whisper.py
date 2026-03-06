@@ -6,7 +6,48 @@ import queue
 import sys
 import json
 import re
+# ================= Add Piper TTS ============= 06/03/2026
+PIPER_MODEL = "./models/en_US-lessac-low.onnx"
+PIPER_BIN   = "./piper/piper"
 
+tts_queue = queue.Queue()
+
+def piper_speak(text):
+    """Speak a single chunk via piper."""
+    try:
+        proc = subprocess.Popen(
+            [
+                PIPER_BIN,
+                "--model", PIPER_MODEL,
+                "--output-raw",          # raw PCM to stdout
+            ],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+        # pipe text in, get raw PCM out → play with aplay
+        aplay = subprocess.Popen(
+            ["aplay", "-r", "22050", "-f", "S16_LE", "-t", "raw", "-"],
+            stdin=proc.stdout,
+            stderr=subprocess.DEVNULL,
+        )
+        proc.stdin.write(text.encode())
+        proc.stdin.close()
+        proc.wait()
+        aplay.wait()
+    except Exception as e:
+        print(f"[TTS ERROR] {e}")
+
+
+def tts_worker():
+    """Dedicated thread that speaks chunks sequentially."""
+    while True:
+        chunk = tts_queue.get()
+        if chunk is None:   # poison pill — stop signal
+            break
+        piper_speak(chunk)
+        tts_queue.task_done()
+# +++++++++++++++++++++++++++++++++++++++++++++++++
 # ================= CONFIG =================
 
 WHISPER_CMD = [
@@ -145,6 +186,14 @@ def run_llama_stream(prompt,speech_end_time):
     prompt = prompt[-MAX_PROMPT_CHARS:]
     spoken_text = ""
 
+    # ======= Additions for Piper TTS === 06/03/2026
+    partial     = ""          # accumulates tokens until chunk boundary
+
+    # start TTS worker thread
+    tts_thread = threading.Thread(target=tts_worker, daemon=True)
+    tts_thread.start()
+    # ====================================
+
     try:
         with session.post(
             LLAMA_URL,
@@ -185,7 +234,20 @@ def run_llama_stream(prompt,speech_end_time):
                         metrics["llm_first_token"] = time.monotonic()
                     metrics["tokens"] += 1
                     spoken_text += delta
+                    #print(delta, end="", flush=True)
+# -------------- Piper -----------------------------
+                    partial     += delta
                     print(delta, end="", flush=True)
+                    matches = CHUNK_PATTERN.findall(partial)
+                    for match in matches:
+                        chunk = match.strip()
+                        if chunk:
+                            tts_queue.put(chunk)
+                    # keep unmatched remainder in partial
+                    partial = CHUNK_PATTERN.sub("", partial)
+        if partial.strip():
+            tts_queue.put(partial.strip())
+#------------------------------------------------------
 
 
         print("\n")
@@ -195,17 +257,31 @@ def run_llama_stream(prompt,speech_end_time):
 
     finally:
         # Speak response (TTS)
-        if spoken_text.strip():
-            speak(spoken_text.strip())
-            metrics["tts_end"] = time.monotonic()
+        # if spoken_text.strip():
+        #     speak(spoken_text.strip())
+        #     metrics["tts_end"] = time.monotonic()
+        # llm_busy = False
+        # listening_enabled = True
+        # print("Listening: ")
+        # metrics["llm_end"] = time.monotonic()
+        # print_metrics()
+        # global last_llm_time
+        # last_llm_time = time.monotonic()
+        # --- Piper is the new boss in town
+
+        tts_queue.put(None)      # signal worker to stop
+        tts_thread.join()        # wait for all chunks to finish speaking
+        metrics["tts_end"] = time.monotonic()
+
         llm_busy = False
         listening_enabled = True
         print("Listening: ")
         metrics["llm_end"] = time.monotonic()
         print_metrics()
+
         global last_llm_time
         last_llm_time = time.monotonic()
-
+# ------------------------------------------------------------
 
 
 
