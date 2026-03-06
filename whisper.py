@@ -30,7 +30,7 @@ metrics = {
 
 LLAMA_URL = "http://localhost:8080/v1/chat/completions"
 
-SILENCE_TIMEOUT = 0.7 #1.2        # seconds
+SILENCE_TIMEOUT = 1.2 #1.2        # seconds
 MIN_CHARS = 25
 MAX_PROMPT_CHARS = 512
 N_PREDICT = 40
