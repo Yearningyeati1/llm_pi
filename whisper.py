@@ -7,7 +7,7 @@ import sys
 import json
 import re
 # ================= Add Piper TTS ============= 06/03/2026
-PIPER_MODEL = "/home/pi/Desktop/code_llm_pi/en_US-lessac-low.onnx"
+PIPER_MODEL = "/home/pi/Desktop/code_llm_pi/en_US-ryan-low.onnx"
 PIPER_BIN   = "/home/pi/Desktop/code_llm_pi/piper/piper"
 CHUNK_PATTERN = re.compile(r'([^.!?,]+[.!?,]+)')
 tts_queue = queue.Queue()
