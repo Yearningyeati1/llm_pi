@@ -72,7 +72,7 @@ def warmup_llm():
             LLAMA_URL,
             json={
                 "messages": [
-                    {"role": "system", "content": "You are a voice assistant. Reply in exactly 1 short sentence."},
+                    {"role": "system", "content": "You are a voice assistant named SPARC developed at NIT Rourkela. Reply in one short sentence."},
                     {"role": "user", "content": "hi"}
                 ],
                 "n_predict": 1,
@@ -140,7 +140,7 @@ def run_llama_stream(prompt,speech_end_time):
             json={
                 "messages": [
                     {
-                        "role": "system", "content": "You are a voice assistant. Reply in exactly 1 short sentence."
+                        "role": "system", "content": "You are a voice assistant named SPARC developed at NIT Rourkela. Reply in one short sentence."
                         # "content": (
                         #     "You are a voice assistant running on a Raspberry Pi.\n\n"
                         #     "Rules:\n"
@@ -155,7 +155,7 @@ def run_llama_stream(prompt,speech_end_time):
                     }
                 ],
                 "n_predict": N_PREDICT,
-                "temperature": 0.5,
+                "temperature": 0.7,
                 "cache_prompt": True,
                 "stream": True
             },
