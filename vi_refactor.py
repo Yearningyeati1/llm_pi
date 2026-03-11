@@ -115,65 +115,156 @@ class Metrics:
 # ---------------------------------------------------------------------------
 
 # Matches tokens up to (and including) a sentence-ending punctuation mark.
-_CHUNK_RE = re.compile(r"([^.!?,]+[.!?,]+)")
+_CHUNK_RE = re.compile(r"([^.!?]+[.!?]+)")
 
 
+# class TTSWorker:
+#     """Queues text chunks and speaks them sequentially via Piper."""
+
+#     def __init__(self, config: Config) -> None:
+#         self._config = config
+#         self._queue: queue.Queue[Optional[str]] = queue.Queue()
+#         self._thread: Optional[threading.Thread] = None
+
+#     # -- lifecycle -----------------------------------------------------------
+
+#     def start(self) -> None:
+#         self._thread = threading.Thread(target=self._run, daemon=True)
+#         self._thread.start()
+
+#     def stop(self) -> None:
+#         """Signal the worker to drain the queue and exit, then join."""
+#         self._queue.put(None)
+#         if self._thread:
+#             self._thread.join()
+
+#     # -- public API ----------------------------------------------------------
+
+#     def enqueue(self, text: str) -> None:
+#         self._queue.put(text)
+
+#     # -- internals -----------------------------------------------------------
+
+#     def _run(self) -> None:
+#         while True:
+#             chunk = self._queue.get()
+#             if chunk is None:
+#                 break
+#             self._speak(chunk)
+#             self._queue.task_done()
+
+#     def _speak(self, text: str) -> None:
+#         logger.debug("TTS ▶ %s", text[:60])
+#         try:
+#             piper = subprocess.Popen(
+#                 [self._config.piper_bin, "--model", self._config.piper_model, "--output-raw"],
+#                 stdin=subprocess.PIPE,
+#                 stdout=subprocess.PIPE,
+#                 stderr=subprocess.PIPE,
+#             )
+#             aplay = subprocess.Popen(
+#                 ["aplay", "-r", "16000", "-f", "S16_LE", "-t", "raw", "-"],
+#                 stdin=piper.stdout,
+#                 stderr=subprocess.DEVNULL,
+#             )
+#             piper.stdout.close()  # allow piper to receive SIGPIPE when aplay exits
+#             _, stderr = piper.communicate(input=text.encode())
+#             if stderr:
+#                 logger.debug("Piper stderr: %s", stderr.decode().strip())
+#             aplay.wait()
+#         except Exception:
+#             logger.exception("TTS error while speaking chunk")
 class TTSWorker:
-    """Queues text chunks and speaks them sequentially via Piper."""
+    """
+    Streams text into a single long-lived Piper+aplay pipeline.
+
+    Usage (same API as before):
+        tts = TTSWorker(config)
+        tts.start()               # call once before LLM loop
+        tts.enqueue("Hello.")     # call as tokens arrive
+        tts.enqueue("How are you?")
+        tts.stop()                # waits for playback to finish
+    """
 
     def __init__(self, config: Config) -> None:
         self._config = config
         self._queue: queue.Queue[Optional[str]] = queue.Queue()
         self._thread: Optional[threading.Thread] = None
+        self._piper: Optional[subprocess.Popen] = None
+        self._aplay: Optional[subprocess.Popen] = None
 
-    # -- lifecycle -----------------------------------------------------------
+    # ── Lifecycle ────────────────────────────────────────────────────────────
 
     def start(self) -> None:
-        self._thread = threading.Thread(target=self._run, daemon=True)
+        """Spawn piper + aplay once, then start the feeder thread."""
+        self._piper = subprocess.Popen(
+            [
+                self._config.piper_bin,
+                "--model",       self._config.piper_model,
+                "--output-raw",
+                "--sentence-silence", "0.0",   # no inter-sentence gap inside piper
+            ],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+        self._aplay = subprocess.Popen(
+            ["aplay", "-r", "22050", "-f", "S16_LE", "-t", "raw", "-"],
+            stdin=self._piper.stdout,
+            stderr=subprocess.DEVNULL,
+        )
+        # Let piper own stdout so aplay can read it directly;
+        # closing our copy prevents a deadlock when piper exits.
+        self._piper.stdout.close()
+
+        self._thread = threading.Thread(target=self._feeder, daemon=True)
         self._thread.start()
 
     def stop(self) -> None:
-        """Signal the worker to drain the queue and exit, then join."""
-        self._queue.put(None)
+        """
+        Signal end-of-response, drain the queue, close piper's stdin,
+        and wait for aplay to finish playing everything out.
+        """
+        self._queue.put(None)           # sentinel
         if self._thread:
-            self._thread.join()
+            self._thread.join()         # wait for feeder to finish writing
+        if self._piper and self._piper.stdin:
+            try:
+                self._piper.stdin.close()   # EOF → piper flushes + exits
+            except BrokenPipeError:
+                pass
+        if self._aplay:
+            self._aplay.wait()          # wait for audio to finish playing
+        if self._piper:
+            self._piper.wait()
 
-    # -- public API ----------------------------------------------------------
+    # ── Public API ───────────────────────────────────────────────────────────
 
     def enqueue(self, text: str) -> None:
+        """Queue a text chunk. Safe to call from any thread."""
         self._queue.put(text)
 
-    # -- internals -----------------------------------------------------------
+    # ── Internals ────────────────────────────────────────────────────────────
 
-    def _run(self) -> None:
+    def _feeder(self) -> None:
+        """
+        Pull text chunks off the queue and write them to piper's stdin.
+        Piper synthesises audio continuously; aplay plays it as it arrives.
+        """
         while True:
             chunk = self._queue.get()
             if chunk is None:
                 break
-            self._speak(chunk)
-            self._queue.task_done()
+            if not chunk.strip():
+                continue
+            logger.debug("TTS ▶ %s", chunk[:60])
+            try:
+                self._piper.stdin.write((chunk + "\n").encode())   # type: ignore[union-attr]
+                self._piper.stdin.flush()
+            except BrokenPipeError:
+                logger.warning("Piper pipe broken — TTS stopping early")
+                break
 
-    def _speak(self, text: str) -> None:
-        logger.debug("TTS ▶ %s", text[:60])
-        try:
-            piper = subprocess.Popen(
-                [self._config.piper_bin, "--model", self._config.piper_model, "--output-raw"],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            aplay = subprocess.Popen(
-                ["aplay", "-r", "16000", "-f", "S16_LE", "-t", "raw", "-"],
-                stdin=piper.stdout,
-                stderr=subprocess.DEVNULL,
-            )
-            piper.stdout.close()  # allow piper to receive SIGPIPE when aplay exits
-            _, stderr = piper.communicate(input=text.encode())
-            if stderr:
-                logger.debug("Piper stderr: %s", stderr.decode().strip())
-            aplay.wait()
-        except Exception:
-            logger.exception("TTS error while speaking chunk")
 
 
 # ---------------------------------------------------------------------------
