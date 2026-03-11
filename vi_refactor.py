@@ -43,23 +43,23 @@ class Config:
     whisper_bin: str   = "./build/bin/whisper-stream"
     whisper_model: str = "./models/ggml-tiny.en.bin"
     whisper_cwd: str   = "../whisper.cpp"
-    whisper_step: int  = 3000
-    whisper_length: int = 6000
+    whisper_step: int  = 2000
+    whisper_length: int = 5000
     whisper_threads: int = 2
-    whisper_audio_ctx: int = 512
+    whisper_audio_ctx: int = 400
     whisper_card: int = 0
     whisper_cpu_cores: str = "0,1"
 
     # LLaMA
     llama_url: str    = "http://localhost:8080/v1/chat/completions"
     n_predict: int    = 40
-    temperature: float = 0.7
+    temperature: float = 0.4
     max_prompt_chars: int = 512
 
     # Pipeline timing
-    silence_timeout: float    = 1.2   # seconds of silence before sending to LLM
+    silence_timeout: float    = 0.8   # seconds of silence before sending to LLM
     min_prompt_chars: int     = 25
-    post_llm_cooldown: float  = 1.0   # prevents feedback loops after LLM response
+    post_llm_cooldown: float  = 0.0   # prevents feedback loops after LLM response
 
     # System prompt
     system_prompt: str = (
