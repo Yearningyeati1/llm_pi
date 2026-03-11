@@ -288,8 +288,7 @@ asr_to_llm = metrics["llm_request_start"] - metrics["speech_end"]
 ttft = metrics["llm_first_token"] - metrics["llm_request_start"]
 llm_duration = metrics["llm_end"] - metrics["llm_first_token"]
 tps = metrics["tokens"] / llm_duration if llm_duration > 0 else 0
-        end_to_end = metrics["llm_first_token"] - metrics["speech_end"]
-        end_to_end    = metrics["tts_end"]           - metrics["speech_end"]  # ← full pipeline
+end_to_end    = metrics["tts_end"] - metrics["speech_end"]  # ← full pipeline
 
 print("\nTiming Metrics")
 print(f"ASR → LLM decision latency : {asr_to_llm:.3f}s")
