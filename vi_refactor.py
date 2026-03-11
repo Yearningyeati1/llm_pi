@@ -43,8 +43,8 @@ class Config:
     whisper_bin: str   = "./build/bin/whisper-stream"
     whisper_model: str = "./models/ggml-tiny.en.bin"
     whisper_cwd: str   = "../whisper.cpp"
-    whisper_step: int  = 2000
-    whisper_length: int = 8000
+    whisper_step: int  = 3000
+    whisper_length: int = 6000
     whisper_threads: int = 2
     whisper_audio_ctx: int = 512
     whisper_card: int = 0
