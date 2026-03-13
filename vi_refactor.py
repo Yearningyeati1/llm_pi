@@ -431,30 +431,53 @@ class VoiceAssistant:
 
         proc.terminate()
 
-    # -- Aggregator loop -----------------------------------------------------
-
+    # -- Aggregator loop ----------------------------------------------------- Mod 13 Mar
+    
     def _agg_loop(self) -> None:
-        buffer    = ""
-        last_update = time.monotonic()
+    buffer      = ""
+    last_update = time.monotonic()
 
-        while not self._stop.is_set():
-            # Drain incoming ASR text
-            try:
-                text = self._text_queue.get(timeout=0.1)
-                if not self.llm_busy and text.strip():
-                    buffer += " " + text.strip()
-                    last_update = time.monotonic()
-                    print(f"\r🎤 {buffer}", end="", flush=True)
-            except queue.Empty:
-                pass
+    while not self._stop.is_set():
+        try:
+            text = self._text_queue.get(timeout=0.1)
+            if not self.llm_busy and text.strip():
+                buffer      += " " + text.strip()
+                last_update  = time.monotonic()
+                print(f"\r🎤 {buffer}", end="", flush=True)
+        except queue.Empty:
+            pass
 
-            if self.llm_busy:
-                continue
+        if self.llm_busy:
+            buffer = ""          # ✅ discard buffer built during playback
+            last_update = time.monotonic()
+            continue
 
-            # Silence-based commit
-            silence = time.monotonic() - last_update
-            if buffer and silence > self._cfg.silence_timeout:
-                buffer, last_update = self._try_commit(buffer)
+        silence = time.monotonic() - last_update
+        if buffer and silence > self._cfg.silence_timeout:
+            buffer, last_update = self._try_commit(buffer)
+
+    # def _agg_loop(self) -> None:
+    #     buffer    = ""
+    #     last_update = time.monotonic()
+
+    #     while not self._stop.is_set():
+    #         # Drain incoming ASR text
+    #         try:
+    #             text = self._text_queue.get(timeout=0.1)
+    #             if not self.llm_busy and text.strip():
+    #                 buffer += " " + text.strip()
+    #                 last_update = time.monotonic()
+    #                 print(f"\r🎤 {buffer}", end="", flush=True)
+    #         except queue.Empty:
+    #             pass
+
+    #         if self.llm_busy:
+    #             continue
+
+    #         # Silence-based commit
+    #         silence = time.monotonic() - last_update
+    #         if buffer and silence > self._cfg.silence_timeout:
+    #             buffer, last_update = self._try_commit(buffer)
 
     def _try_commit(self, buffer: str) -> tuple[str, float]:
         """Validate and dispatch a buffered prompt; returns a reset (buffer, timestamp)."""
@@ -479,60 +502,134 @@ class VoiceAssistant:
         self._run_llm(prompt, speech_end=now)
         return "", time.monotonic()
 
-    # -- LLM + TTS pipeline --------------------------------------------------
-
+    # ----------- 13 Mar Mod
     def _run_llm(self, prompt: str, speech_end: float) -> None:
-        self._metrics.reset()
-        self._metrics.speech_end       = speech_end
-        self._metrics.llm_request_start = time.monotonic()
+    self._metrics.reset()
+    self._metrics.speech_end        = speech_end
+    self._metrics.llm_request_start = time.monotonic()
+
+    with self._state_lock:
+        self._listening = False   # stop processing ASR during playback
+        self._llm_busy  = True
+        self._last_prompt = prompt
+
+    tts = TTSWorker(self._cfg)
+    tts.start()
+
+    partial = ""
+
+    try:
+        for token in self._llm.stream(prompt):
+            if self._metrics.llm_first_token is None:
+                self._metrics.llm_first_token = time.monotonic()
+            self._metrics.tokens += 1
+
+            print(token, end="", flush=True)
+            partial += token
+
+            for match in _CHUNK_RE.findall(partial):
+                chunk = match.strip()
+                if chunk:
+                    tts.enqueue(chunk)
+            partial = _CHUNK_RE.sub("", partial)
+
+        if partial.strip():
+            tts.enqueue(partial.strip())
+
+        print()
+
+    except Exception:
+        logger.exception("LLM streaming error")
+
+    finally:
+        tts.stop()  # ✅ blocks until audio is FULLY played out
+
+        self._metrics.tts_end = time.monotonic()
+        self._metrics.llm_end = time.monotonic()
+
+        # ✅ Drain everything ASR picked up during playback
+        drained = 0
+        while not self._text_queue.empty():
+            try:
+                self._text_queue.get_nowait()
+                drained += 1
+            except queue.Empty:
+                break
+        if drained:
+            logger.info("Drained %d ASR fragments captured during TTS playback", drained)
+
+        # ✅ Brief settle time for mic to stop picking up speaker reverb
+        time.sleep(self._cfg.post_llm_cooldown if self._cfg.post_llm_cooldown > 0 else 0.4)
+
+        # ✅ Drain again after settle — catches any reverb tail
+        while not self._text_queue.empty():
+            try:
+                self._text_queue.get_nowait()
+            except queue.Empty:
+                break
 
         with self._state_lock:
-            self._listening = False
-            self._llm_busy  = True
-            self._last_prompt = prompt
+            self._llm_busy      = False
+            self._listening     = True
+            self._last_llm_time = time.monotonic()
 
-        tts = TTSWorker(self._cfg)
-        tts.start()
+        logger.info("Listening…")
+        self._metrics.log()
+    # -- LLM + TTS pipeline --------------------------------------------------
 
-        partial = ""
+    # def _run_llm(self, prompt: str, speech_end: float) -> None:
+    #     self._metrics.reset()
+    #     self._metrics.speech_end       = speech_end
+    #     self._metrics.llm_request_start = time.monotonic()
 
-        try:
-            for token in self._llm.stream(prompt):
-                if self._metrics.llm_first_token is None:
-                    self._metrics.llm_first_token = time.monotonic()
-                self._metrics.tokens += 1
+    #     with self._state_lock:
+    #         self._listening = False
+    #         self._llm_busy  = True
+    #         self._last_prompt = prompt
 
-                print(token, end="", flush=True)
-                partial += token
+    #     tts = TTSWorker(self._cfg)
+    #     tts.start()
 
-                # Flush complete sentence chunks to TTS immediately
-                for match in _CHUNK_RE.findall(partial):
-                    chunk = match.strip()
-                    if chunk:
-                        tts.enqueue(chunk)
-                partial = _CHUNK_RE.sub("", partial)
+    #     partial = ""
 
-            # Flush any remaining partial sentence
-            if partial.strip():
-                tts.enqueue(partial.strip())
+    #     try:
+    #         for token in self._llm.stream(prompt):
+    #             if self._metrics.llm_first_token is None:
+    #                 self._metrics.llm_first_token = time.monotonic()
+    #             self._metrics.tokens += 1
 
-            print()  # newline after streamed output
+    #             print(token, end="", flush=True)
+    #             partial += token
 
-        except Exception:
-            logger.exception("LLM streaming error")
+    #             # Flush complete sentence chunks to TTS immediately
+    #             for match in _CHUNK_RE.findall(partial):
+    #                 chunk = match.strip()
+    #                 if chunk:
+    #                     tts.enqueue(chunk)
+    #             partial = _CHUNK_RE.sub("", partial)
 
-        finally:
-            tts.stop()
-            self._metrics.tts_end = time.monotonic()
-            self._metrics.llm_end = time.monotonic()
+    #         # Flush any remaining partial sentence
+    #         if partial.strip():
+    #             tts.enqueue(partial.strip())
 
-            with self._state_lock:
-                self._llm_busy  = False
-                self._listening = True
-                self._last_llm_time = time.monotonic()
+    #         print()  # newline after streamed output
 
-            logger.info("Listening…")
-            self._metrics.log()
+    #     except Exception:
+    #         logger.exception("LLM streaming error")
+
+    #     finally:
+    #         tts.stop()
+    #         self._metrics.tts_end = time.monotonic()
+    #         self._metrics.llm_end = time.monotonic()
+
+    #         with self._state_lock:
+    #             self._llm_busy  = False
+    #             self._listening = True
+    #             self._last_llm_time = time.monotonic()
+
+    #         logger.info("Listening…")
+    #         self._metrics.log()
+
 
 
 # ---------------------------------------------------------------------------
