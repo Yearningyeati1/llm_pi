@@ -1,0 +1,19 @@
+# Core orchestration
+numpy>=1.24
+requests>=2.31
+
+# Audio I/O
+pyaudio>=0.2.13
+
+# Wake word (openWakeWord variant — carat_assistant_wake.py)
+openwakeword>=0.6.0
+onnxruntime>=1.16
+
+# --- Notes ---
+# whisper.cpp and llama.cpp are NOT pip packages — they are built from source
+# as native binaries (see INSTALL.md). No Python bindings are required by
+# this project; the pipeline shells out to the compiled binaries via
+# subprocess.
+#
+# Piper TTS is also used as a compiled binary + ONNX voice models, not a
+# pip package, in the current scripts.
