@@ -1,4 +1,4 @@
-# CARAT — Real-Time Edge Conversational AI System
+# Real-Time Edge Conversational AI System
 
 <p align="center">
   <b>A fully offline, streaming, on-device voice assistant pipeline for resource-constrained edge hardware.</b>
