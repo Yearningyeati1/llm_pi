@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+*.pyc
+
+# Build artifacts (whisper.cpp / llama.cpp submodule builds, if vendored)
+build/
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Model weights — large binaries should NOT be committed
+models/**/*.bin
+models/**/*.gguf
+models/**/*.onnx
+models/**/*.onnx.json
+models/**/*.ppn
+*.ggml
+*.gguf
+
+# Sweep / benchmark output
+sweep_results.json
+*.log
+
+# Audio artifacts
+*.wav
+*.raw
+*.pcm
+
+# Editor / OS cruft
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+*.key
+secrets.yaml
+
+# Jupyter (if used for analysis notebooks)
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Local scratch
+scratch/
+tmp/
