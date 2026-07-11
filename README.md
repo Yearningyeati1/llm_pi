@@ -39,7 +39,7 @@ It integrates three neural subsystems into a single low-latency, multi-threaded,
 No component makes a network call outside `localhost`. The system was designed and evaluated for embedded,
 robotics, and human-robot-interaction applications where cloud dependency is a liability, not a convenience.
 
-> 📄 Full technical writeup: [`Real-Time Edge Conversational AI System` (Thesis, NIT Rourkela, 2026)](./docs/Thesis_final.pdf)
+> 📄 Full technical writeup: [`Real-Time Edge Conversational AI System` (Thesis, NIT Rourkela, 2026)](./main/docs/Thesis_final.pdf)
 
 ## Motivation
 
@@ -64,7 +64,6 @@ flowchart LR
     E -.latency metrics.-> I[(Metrics Logger)]
 ```
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full sequence diagram, thread model, and data-flow breakdown.
 
 ## Workflow (animated description)
 
