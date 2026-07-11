@@ -162,6 +162,5 @@ python tune_whisper.py --auto
 ```
 
 ## Screenshots / Demo
-
-> 🖼️ _Placeholder — add a terminal capture of a live session (transcript + streamed LLM tokens + TTS output),
-> and/or a short demo GIF/video link here._
+Sample deployment on Jetson Orin Nano Device:
+[Demo](https://drive.google.com/file/d/1YrM1zGAlnXKuyhSDw6pzLB2aT2vs32Ob/view?usp=sharing)
